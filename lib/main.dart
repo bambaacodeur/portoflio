@@ -729,22 +729,6 @@ class _PortfolioPageState extends State<PortfolioPage>
           ),
           const SizedBox(height: 30),
           _buildExperienceCard(
-            'September 2023 - August 2023',
-            'Developer Fullstack - Freelance',
-            'OMVG',
-            "Study and development of a geographic information system",
-            [
-              'JAVA 11',
-              'SpringBoot',
-              'REST API',
-              'FLUTTER',
-              'ODOO15',
-              'MAVEN',
-            ],
-            false,
-          ),
-          const SizedBox(height: 30),
-          _buildExperienceCard(
             'November 2021 - June 2022',
             'Developer Fullstack',
             'SONATEL-ORANGE',
