@@ -198,11 +198,95 @@ class _PortfolioPageState extends State<PortfolioPage>
             if (isMobile)
               IconButton(
                 icon: const Icon(Icons.menu),
-                onPressed: () {},
+                onPressed: () {
+                  _showMobileMenu(context);
+                },
               ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showMobileMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(25),
+              topRight: Radius.circular(25),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 15),
+              Container(
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildMobileMenuItem('Bio', Icons.person, _aboutKey),
+              _buildMobileMenuItem('Compétences', Icons.stars, _skillsKey),
+              _buildMobileMenuItem('Expérience', Icons.work, _experienceKey),
+              _buildMobileMenuItem('Formation', Icons.school, _educationKey),
+              _buildMobileMenuItem('Projets', Icons.apps, _projectsKey),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    child: const Text(
+                      'Contact',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMobileMenuItem(
+      String text, IconData icon, GlobalKey sectionKey) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF6366F1)),
+      title: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: () {
+        Navigator.pop(context);
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _scrollToSection(sectionKey);
+        });
+      },
     );
   }
 
@@ -983,12 +1067,12 @@ class _PortfolioPageState extends State<PortfolioPage>
       child: Column(
         children: [
           const Text(
-            'Projets Réalisés',
+            'Projects Completed',
             style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           const Text(
-            'Quelques-unes de mes réalisations',
+            'Some of My Achievements',
             style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
           const SizedBox(height: 50),
@@ -1006,15 +1090,29 @@ class _PortfolioPageState extends State<PortfolioPage>
                   _buildProjectCard(
                     'E-Commerce Platform',
                     'https://images.unsplash.com/photo-1557821552-17105176677c?w=400',
-                    'Plateforme de vente en ligne moderne avec gestion de panier, paiements sécurisés et interface responsive.',
+                    'Modern online sales platform with shopping cart management, secure payments, and a responsive interface',
                     ['React', 'Node.js', 'MongoDB'],
                     0,
                   ),
                   _buildProjectCard(
                     'Task Manager App',
                     'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=400',
-                    'Application de gestion de tâches avec notifications en temps réel et collaboration d\'équipe.',
+                    'Task management application with real-time notifications and team collaboration features.',
                     ['Vue.js', 'Firebase', 'Vuex'],
+                    1,
+                  ),
+                  _buildProjectCard(
+                    'Carpooling',
+                    'https://images.unsplash.com/photo-1636935529049-2078e9ee3e6c?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1335?w=400',
+                    'Task management application with real-time notifications and team collaboration features.',
+                    [
+                      'Anglar',
+                      'Springboot',
+                      'Spring Securite',
+                      'Spring cloud',
+                      'MySql',
+                      'leaflet'
+                    ],
                     1,
                   ),
                 ],
@@ -1116,7 +1214,7 @@ class _PortfolioPageState extends State<PortfolioPage>
                         TextButton.icon(
                           onPressed: () {},
                           icon: const Icon(Icons.arrow_forward),
-                          label: const Text('Voir le projet'),
+                          label: const Text('View Project'),
                           style: TextButton.styleFrom(
                             foregroundColor: const Color(0xFF6366F1),
                           ),
@@ -1160,7 +1258,7 @@ class _PortfolioPageState extends State<PortfolioPage>
                 child: Column(
                   children: [
                     const Text(
-                      'Travaillons Ensemble',
+                      "Let's Work Together",
                       style: TextStyle(
                         fontSize: 40,
                         fontWeight: FontWeight.bold,
@@ -1170,7 +1268,7 @@ class _PortfolioPageState extends State<PortfolioPage>
                     ),
                     const SizedBox(height: 15),
                     const Text(
-                      'Prêt à donner vie à votre projet ? Contactez-moi !',
+                      'Ready to bring your project to life? Contact me!',
                       style: TextStyle(
                         fontSize: 18,
                         color: Colors.white70,
@@ -1201,7 +1299,7 @@ class _PortfolioPageState extends State<PortfolioPage>
                         OutlinedButton.icon(
                           onPressed: () {},
                           icon: const Icon(Icons.download),
-                          label: const Text('Télécharger CV'),
+                          label: const Text('Doawload CV'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white,
                             side: const BorderSide(color: Colors.white),
@@ -1282,7 +1380,7 @@ class _PortfolioPageState extends State<PortfolioPage>
                       _buildFooterLink('Bio'),
                       _buildFooterLink('Compétences'),
                       _buildFooterLink('Expérience'),
-                      _buildFooterLink('Projets'),
+                      _buildFooterLink('Projects'),
                     ],
                   ),
                 ),
@@ -1353,7 +1451,7 @@ class _PortfolioPageState extends State<PortfolioPage>
           Divider(color: Colors.grey[700]),
           const SizedBox(height: 20),
           Text(
-            '© 2025 Khadim SECK. Tous droits réservés.',
+            '© 2025 Khadim SECK. All rights reserved',
             style: TextStyle(
               color: Colors.grey[500],
               fontSize: 14,
