@@ -748,7 +748,140 @@ class _PortfolioPageState extends State<PortfolioPage>
     Writing unit, integration, and regression tests while applying best practices in API development.
     Experience with Agile/Scrum and SAFe methodologies, with strong involvement in continuous delivery.
     Expertise in distributed architectures: Kafka (streaming), Elastic & ELK (data historization, monitoring, and log analysis).
-    Projects completed: Orange Bank (Tik Tak), Docubase, Forfait Orange Money, Bank to Wallet, Cashin On the Fly, BNPL (Buy Now Pay Later).""",
+    Projects completed: \n
+    
+      Project: Docubase – Document Management and Indexing System
+
+      Period: 2023
+      Context / Business Objective:
+      Docubase is a centralized information system designed to unify and consolidate the various document databases within the Orange ecosystem. Each information system previously managed its own repository; 
+      the goal was to build a single, unified platform for document access and management (upload, download, search), improving data consistency and operational efficiency across internal services.
+      
+      Role / Responsibilities:
+      
+      Designed and developed RESTful APIs for document search, upload, and download operations.
+      
+      Implemented secure microservices architecture using Spring Boot and Spring Cloud.
+      
+      Integrated Keycloak for authentication and authorization management.
+      
+      Documented and tested APIs using Postman, and exposed them through Apigee.
+      
+      Participated in continuous integration and deployment (CI/CD) processes with Jenkins and OpenShift.
+      
+      Collaborated on issue tracking and sprint planning using Jira, and managed source code via Bitbucket.
+      
+      Technical Environment:
+      JHipster · Spring Boot · Spring Cloud · Microservices · Java 11 · Keycloak · Apigee · Postman · Jenkins · OpenShift · Jira · Bitbucket · CI/CD
+      
+      Results / Impact:
+      
+      Successfully centralized document databases previously spread across multiple systems.
+      
+      
+      Simplified integration with other systems through standardized and secure APIs.
+      
+      Improved document traceability and governance across departments.
+      
+      Methodology:
+      Agile (Scrum) – two-week sprints, code reviews, continuous integration and delivery on OpenShift.
+      
+      
+      💸 Project: Orange Money Package – Wallet Transfer and Billing System Redesign
+
+          Period: 2024 – 2025
+          Context / Business Objective:
+          The Orange Money Package project aimed to modernize the Mobile Money ecosystem by redesigning the wallet transfer and billing systems to improve performance, scalability, and transactional security.
+           A key component of the initiative was the introduction of transaction packages (“forfaits”), 
+          allowing customers to benefit from fee-free transfers up to a defined threshold.
+          For example, a customer purchasing a 75 XOF package could perform up to 10,000 XOF in transactions without any fees applied. 
+          If the transaction amount exceeded this limit (e.g., 15,000 XOF), the first 10,000 XOF would remain fee-free, while the remaining 5,000 XOF would incur standard transaction fees.
+          This mechanism aimed to enhance customer satisfaction and encourage higher usage of digital financial services.
+          
+          Role / Responsibilities:
+          
+          Designed and developed the microservice to handle P2P transfers, international remittances, transaction cancellations, and package-based fee management.
+          
+          Contributed to the complete redesign of the billing module, consolidating internal and external partner billing under a unified microservice.
+          
+          Implemented a secure and distributed microservices architecture using Spring Boot and Spring Cloud.
+          
+          Integrated Redis for caching and optimization of high-volume transactional data.
+          
+          Leveraged Elasticsearch for search, monitoring, and analytics of wallet transactions.
+          
+          Integrated Keycloak for authentication and authorization, and exposed APIs through Apigee.
+          
+          Created and maintained API documentation with Swagger, Redoc, and Postman.
+          
+          Followed Agile (Scrum) methodology using Jira for sprint tracking, Bitbucket for version control, and automated deployments via CI/CD pipelines.
+          
+          Technical Environment:
+          Java 21 · Spring Boot · Spring Cloud · JHipster · Redis · Elasticsearch · Keycloak · Apigee · Swagger · Redoc · Maven · Jira · Bitbucket · Postman · CI/CD
+          
+          Results / Impact:
+          
+          Successfully implemented a dynamic package-based pricing model for Orange Money users.
+          
+          Centralized and standardized partner billing and transaction logic within a single microservice.
+          
+          Strengthened security and transactional integrity through fine-grained access control.
+          
+          Provided a scalable foundation for future Orange Money digital financial services.
+          
+          Methodology:
+          Agile (Scrum) – biweekly sprints, code reviews, automated testing, and continuous delivery on Orange’s infrastructure
+          
+          
+          
+          🏦 Project: Orange Bank – Tik Tak (Mobile Credit Service)
+
+          Period: 2024 – 2025
+          Context / Business Objective:
+          The Orange Bank – Tik Tak project aimed to develop an instant mobile credit solution for Orange Money customers who are eligible based on their financial scoring profile.
+          The main objective was to enable users to apply for and receive mobile loans directly through their Orange Money wallet — quickly, securely, and seamlessly.
+          
+          The project focused on the design and exposure of RESTful APIs supporting the entire credit lifecycle, including:
+          
+          Loan request API (credit application submission)
+          
+          getAuthorization API to obtain partner bank authorization
+          
+          Customer consent API for loan approval confirmation
+          
+          Loan validation and disbursement API
+          
+          Role / Responsibilities:
+          
+          Designed and developed backend APIs covering the full credit request and validation workflow.
+          
+          Integrated authorization and customer consent flows within the Orange Money ecosystem.
+          
+          Collaborated with software architects and security teams to ensure compliance with banking and regulatory standards.
+          
+          Implemented unit, integration, and regression tests to ensure service reliability and resilience.
+          
+          Participated in CI/CD deployment and monitoring on OpenShift infrastructure.
+          
+          Technical Environment:
+          Java 21 · Spring Boot · Spring Cloud · JHipster · Keycloak · Apigee · Redis · Elasticsearch · Maven · Postman · Jira · Bitbucket · CI/CD
+          
+          Results / Impact:
+          
+          Delivered a fully integrated instant mobile loan service within Orange Money.
+          
+          Reduced loan processing time from several hours to just a few seconds.
+          
+          Enhanced customer experience through a fully automated workflow (scoring, authorization, consent, validation).
+          
+          Contributed to financial inclusion by providing credit access to unbanked and underbanked users.
+          
+          Methodology:
+          Agile (Scrum) – biweekly sprints, continuous integration, and close collaboration between developers, architects, and security experts.
+        
+   
+    
+    """,
             [
               'JAVA 11',
               'JAVA 21',
