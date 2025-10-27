@@ -528,7 +528,7 @@ class _PortfolioPageState extends State<PortfolioPage>
           child: Transform.translate(
             offset: Offset(50 * (1 - value), 0),
             child: Container(
-              height: 300,
+              height: 500,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
@@ -539,9 +539,7 @@ class _PortfolioPageState extends State<PortfolioPage>
                   ),
                 ],
                 image: const DecorationImage(
-                  image: NetworkImage(
-                    'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800',
-                  ),
+                  image: AssetImage('assets/images/kh-bio.jpeg'),
                   fit: BoxFit.cover,
                 ),
               ),
