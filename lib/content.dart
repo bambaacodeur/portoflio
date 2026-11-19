@@ -372,6 +372,14 @@ const List<Project> projects = [
     tags: ['Java 21', 'Spring Boot', 'Keycloak', 'OpenShift'],
   ),
   Project(
+    title: 'Buy Now Pay Later',
+    context: 'SONATEL ORANGE · 2023 – 2025',
+    icon: Icons.shopping_cart_checkout,
+    description:
+        'Buy Now Pay Later service for Orange Money customers: backend APIs for eligibility checks, purchase financing, repayment schedules and payment tracking, exposed securely to partner merchants.',
+    tags: ['Java 21', 'Spring Boot', 'Spring Cloud', 'Keycloak', 'Apigee'],
+  ),
+  Project(
     title: 'Docubase',
     context: 'SONATEL ORANGE · 2023',
     icon: Icons.folder_copy,
