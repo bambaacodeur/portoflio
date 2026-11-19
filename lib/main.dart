@@ -371,6 +371,7 @@ class _Hero extends StatelessWidget {
             scale: Tween(begin: 0.85, end: 1.0).animate(photo),
             child: FadeTransition(
               opacity: photo,
+              alwaysIncludeSemantics: true,
               child: Container(
                 width: mobile ? 120 : 144,
                 height: mobile ? 120 : 144,
@@ -400,6 +401,7 @@ class _Hero extends StatelessWidget {
           const SizedBox(height: 28),
           FadeTransition(
             opacity: text,
+            alwaysIncludeSemantics: true,
             child: SlideTransition(
               position: Tween(begin: const Offset(0, 0.15), end: Offset.zero)
                   .animate(text),
@@ -446,7 +448,7 @@ class _Hero extends StatelessWidget {
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
-                      ),
+                      ).copyWith(side: focusOutline(p.onHeroAction)),
                       child: const Text("Let's talk together"),
                     ),
                   ],
@@ -481,7 +483,7 @@ class _SocialRow extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-              ),
+              ).copyWith(side: focusOutline(color)),
             ),
           ),
         );
@@ -1068,7 +1070,7 @@ class _ContactSection extends StatelessWidget {
                       foregroundColor: p.onHeroAction,
                       minimumSize: const Size(48, 50),
                       padding: const EdgeInsets.symmetric(horizontal: 24),
-                    ),
+                    ).copyWith(side: focusOutline(p.onHeroAction)),
                   ),
                 ),
                 ExternalLink(
@@ -1079,9 +1081,13 @@ class _ContactSection extends StatelessWidget {
                     label: const Text(phoneDisplay),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: p.onHero,
-                      side: BorderSide(color: p.onHero),
                       minimumSize: const Size(48, 50),
                       padding: const EdgeInsets.symmetric(horizontal: 24),
+                    ).copyWith(
+                      side: focusOutline(
+                        p.onHero,
+                        rest: BorderSide(color: p.onHero),
+                      ),
                     ),
                   ),
                 ),
@@ -1125,7 +1131,7 @@ class _Footer extends StatelessWidget {
             padding: EdgeInsets.zero,
             alignment: Alignment.centerLeft,
             tapTargetSize: MaterialTapTargetSize.padded,
-          ),
+          ).copyWith(side: focusOutline(p.footerInk)),
           child: Text(text, style: const TextStyle(fontSize: 14)),
         );
 

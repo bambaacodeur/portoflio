@@ -148,6 +148,17 @@ class Palette extends ThemeExtension<Palette> {
   }
 }
 
+/// Keyboard focus ring for Material buttons: a solid outline that only
+/// appears while the control has keyboard focus. [rest] is the border the
+/// control shows the rest of the time (none by default).
+WidgetStateProperty<BorderSide?> focusOutline(Color color,
+        {BorderSide? rest}) =>
+    WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.focused)
+          ? BorderSide(color: color, width: rest == null ? 2 : 3)
+          : rest,
+    );
+
 extension PaletteContext on BuildContext {
   Palette get palette => Theme.of(this).extension<Palette>()!;
 }
@@ -173,8 +184,13 @@ ThemeData buildTheme(Brightness brightness) {
     bodyColor: p.body,
     displayColor: p.ink,
   );
+  final ring = ButtonStyle(side: focusOutline(p.ink));
   return base.copyWith(
     textTheme: text,
+    textButtonTheme: TextButtonThemeData(style: ring),
+    filledButtonTheme: FilledButtonThemeData(style: ring),
+    outlinedButtonTheme: OutlinedButtonThemeData(style: ring),
+    iconButtonTheme: IconButtonThemeData(style: ring),
     extensions: [p],
     textSelectionTheme: TextSelectionThemeData(
       selectionColor: p.primary.withValues(alpha: 0.28),
