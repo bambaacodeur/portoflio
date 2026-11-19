@@ -376,7 +376,7 @@ const List<Project> projects = [
     context: 'SONATEL ORANGE · 2023 – 2025',
     icon: Icons.shopping_cart_checkout,
     description:
-        'Buy Now Pay Later service for Orange Money customers: backend APIs for eligibility checks, purchase financing, repayment schedules and payment tracking, exposed securely to partner merchants.',
+        'Instant loan for Orange Money customers short on balance, so they can keep using Orange Money services right away (Illimix bundles, merchant payments, bill payments…) and pay back later.',
     tags: ['Java 21', 'Spring Boot', 'Spring Cloud', 'Keycloak', 'Apigee'],
   ),
   Project(
