@@ -1,30 +1,45 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:google_fonts/google_fonts.dart';
+import 'package:portoflio/content.dart';
+import 'package:flutter/material.dart';
 import 'package:portoflio/main.dart';
+import 'package:portoflio/theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
+  setUp(() =>
+      VisibilityDetectorController.instance.updateInterval = Duration.zero);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  test('years of experience counts from November 2021', () {
+    expect(yearsOfExperience, greaterThanOrEqualTo(5));
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('portfolio renders name and sections', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 900));
+    await tester.pumpWidget(const PortfolioApp());
+    VisibilityDetectorController.instance.updateInterval = Duration.zero;
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text(fullName), findsWidgets);
+    expect(find.text('Projects'), findsWidgets);
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('theme button switches between light and dark', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    themeMode.value = ThemeMode.light;
+    await tester.binding.setSurfaceSize(const Size(1280, 900));
+    await tester.pumpWidget(const PortfolioApp());
+    await tester.pump(const Duration(seconds: 2));
+
+    await tester.tap(find.byTooltip('Switch to dark mode'));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(themeMode.value, ThemeMode.dark);
+    expect(find.byTooltip('Switch to light mode'), findsOneWidget);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('theme_mode'), 'dark');
   });
 }

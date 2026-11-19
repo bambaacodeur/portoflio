@@ -1,1636 +1,1205 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
-void main() {
+import 'content.dart';
+import 'theme.dart';
+import 'widgets.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await loadThemeMode();
+  // Flutter web draws on a canvas; build the semantics tree up front so
+  // screen readers see the page without a hidden "Enable accessibility" click.
+  if (kIsWeb) SemanticsBinding.instance.ensureSemantics();
+  VisibilityDetectorController.instance.updateInterval =
+      const Duration(milliseconds: 80);
   runApp(const PortfolioApp());
 }
 
 class PortfolioApp extends StatelessWidget {
-  const PortfolioApp({Key? key}) : super(key: key);
+  const PortfolioApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Khadim SECK - Portfolio',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        fontFamily: 'Poppins',
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeMode,
+      builder: (context, mode, _) => MaterialApp(
+        title: '$fullName – Fullstack Java Developer',
+        debugShowCheckedModeBanner: false,
+        theme: buildTheme(Brightness.light),
+        darkTheme: buildTheme(Brightness.dark),
+        themeMode: mode,
+        home: const PortfolioPage(),
       ),
-      home: const PortfolioPage(),
     );
   }
 }
 
+enum NavSection { about, skills, experience, education, projects, contact }
+
+extension on NavSection {
+  String get label => switch (this) {
+        NavSection.about => 'About',
+        NavSection.skills => 'Skills',
+        NavSection.experience => 'Experience',
+        NavSection.education => 'Education',
+        NavSection.projects => 'Projects',
+        NavSection.contact => 'Contact',
+      };
+
+  IconData get icon => switch (this) {
+        NavSection.about => Icons.person_outline,
+        NavSection.skills => Icons.auto_awesome_outlined,
+        NavSection.experience => Icons.work_outline,
+        NavSection.education => Icons.school_outlined,
+        NavSection.projects => Icons.apps,
+        NavSection.contact => Icons.mail_outline,
+      };
+}
+
 class PortfolioPage extends StatefulWidget {
-  const PortfolioPage({Key? key}) : super(key: key);
+  const PortfolioPage({super.key});
 
   @override
   State<PortfolioPage> createState() => _PortfolioPageState();
 }
 
 class _PortfolioPageState extends State<PortfolioPage>
-    with TickerProviderStateMixin {
-  late ScrollController _scrollController;
-  late AnimationController _headerAnimController;
-  late AnimationController _fadeAnimController;
-  bool _showScrollToTop = false;
-
-  // Keys pour les sections
-  final GlobalKey _aboutKey = GlobalKey();
-  final GlobalKey _skillsKey = GlobalKey();
-  final GlobalKey _experienceKey = GlobalKey();
-  final GlobalKey _educationKey = GlobalKey();
-  final GlobalKey _projectsKey = GlobalKey();
+    with SingleTickerProviderStateMixin {
+  final ScrollController _scroll = ScrollController();
+  late final AnimationController _intro = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+  final Map<NavSection, GlobalKey> _keys = {
+    for (final s in NavSection.values) s: GlobalKey(),
+  };
+  bool _showToTop = false;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_scrollListener);
-    _headerAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..forward();
-    _fadeAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..forward();
+    _scroll.addListener(() {
+      final show = _scroll.offset > 400;
+      if (show != _showToTop) setState(() => _showToTop = show);
+    });
   }
 
-  void _scrollListener() {
-    if (_scrollController.offset >= 300 && !_showScrollToTop) {
-      setState(() {
-        _showScrollToTop = true;
-      });
-    } else if (_scrollController.offset < 300 && _showScrollToTop) {
-      setState(() {
-        _showScrollToTop = false;
-      });
-    }
-  }
-
-  void _scrollToTop() {
-    _scrollController.animateTo(
-      0,
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  void _scrollToSection(GlobalKey key) {
-    final context = key.currentContext;
-    if (context != null) {
-      final box = context.findRenderObject() as RenderBox;
-      final position = box.localToGlobal(Offset.zero).dy;
-      final offset =
-          _scrollController.offset + position - 80; // 80px pour le header
-
-      _scrollController.animateTo(
-        offset,
-        duration: const Duration(milliseconds: 800),
-        curve: Curves.easeInOut,
-      );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (reduceMotion(context)) {
+      _intro.value = 1;
+    } else if (!_intro.isAnimating && _intro.value == 0) {
+      _intro.forward();
     }
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
-    _headerAnimController.dispose();
-    _fadeAnimController.dispose();
+    _scroll.dispose();
+    _intro.dispose();
     super.dispose();
   }
 
+  Duration get _scrollDuration => reduceMotion(context)
+      ? Duration.zero
+      : const Duration(milliseconds: 700);
+
+  void _goTo(NavSection section) {
+    final ctx = _keys[section]!.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: _scrollDuration,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _toTop() => _scroll.animateTo(
+        0,
+        duration: _scrollDuration == Duration.zero
+            ? const Duration(milliseconds: 1)
+            : _scrollDuration,
+        curve: Curves.easeOutCubic,
+      );
+
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Scaffold(
-      body: Stack(
+      backgroundColor: p.background,
+      body: Column(
         children: [
-          SingleChildScrollView(
-            controller: _scrollController,
-            child: Column(
-              children: [
-                _buildHeader(context),
-                _buildHeroSection(context),
-                Container(key: _aboutKey, child: _buildAboutSection(context)),
-                Container(key: _skillsKey, child: _buildSkillsSection(context)),
-                Container(
-                    key: _experienceKey,
-                    child: _buildExperienceSection(context)),
-                Container(
-                    key: _educationKey, child: _buildEducationSection(context)),
-                Container(
-                    key: _projectsKey, child: _buildProjectsSection(context)),
-                _buildFooter(context),
-              ],
-            ),
-          ),
-          Positioned(
-            right: 20,
-            bottom: 20,
-            child: AnimatedOpacity(
-              opacity: _showScrollToTop ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 300),
-              child: AnimatedScale(
-                scale: _showScrollToTop ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                child: FloatingActionButton(
-                  onPressed: _scrollToTop,
-                  backgroundColor: const Color(0xFF6366F1),
-                  child: const Icon(
-                    Icons.keyboard_arrow_up,
-                    color: Colors.white,
-                    size: 30,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return FadeTransition(
-      opacity: _fadeAnimController,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 20 : 80,
-          vertical: 20,
-        ),
-        color: Colors.white,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Bamba API',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF6366F1),
-              ),
-            ),
-            if (!isMobile)
-              Row(
-                children: [
-                  _buildNavLink('Bio', _aboutKey),
-                  _buildNavLink('Skills', _skillsKey),
-                  _buildNavLink('Expérience', _experienceKey),
-                  _buildNavLink('Formation', _educationKey),
-                  _buildNavLink('Projects', _projectsKey),
-                  const SizedBox(width: 20),
-                  ElevatedButton(
-                    onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6366F1),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    child: const Text('Contact'),
-                  ),
-                ],
-              ),
-            if (isMobile)
-              IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () {
-                  _showMobileMenu(context);
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showMobileMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(25),
-              topRight: Radius.circular(25),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 15),
-              Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _buildMobileMenuItem('Bio', Icons.person, _aboutKey),
-              _buildMobileMenuItem('Compétences', Icons.stars, _skillsKey),
-              _buildMobileMenuItem('Expérience', Icons.work, _experienceKey),
-              _buildMobileMenuItem('Formation', Icons.school, _educationKey),
-              _buildMobileMenuItem('Projets', Icons.apps, _projectsKey),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6366F1),
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                    child: const Text(
-                      'Contact',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMobileMenuItem(
-      String text, IconData icon, GlobalKey sectionKey) {
-    return ListTile(
-      leading: Icon(icon, color: const Color(0xFF6366F1)),
-      title: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      onTap: () {
-        Navigator.pop(context);
-        Future.delayed(const Duration(milliseconds: 300), () {
-          _scrollToSection(sectionKey);
-        });
-      },
-    );
-  }
-
-  Widget _buildNavLink(String text, GlobalKey sectionKey) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      child: TextButton(
-        onPressed: () => _scrollToSection(sectionKey),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.black87,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeroSection(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0, 0.3),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: _headerAnimController,
-        curve: Curves.easeOutCubic,
-      )),
-      child: FadeTransition(
-        opacity: _headerAnimController,
-        child: Container(
-          width: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-            ),
-          ),
-          padding: EdgeInsets.symmetric(
-            horizontal: isMobile ? 20 : 80,
-            vertical: isMobile ? 60 : 100,
-          ),
-          child: Column(
-            children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(milliseconds: 1000),
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        image: const DecorationImage(
-                          image: AssetImage('assets/images/khadim.jpg'),
-                          fit: BoxFit.fill, // zooms in and fills the circle
-                          alignment: Alignment
-                              .center, // adjust to focus on top/center/bottom
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 30),
-              const Text(
-                'Khadim SECK',
-                style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Software Engineer |Java Developer fullstack | AI scientis senior ( GEEK )',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.white70,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildSocialIcon(Icons.work_outline),
-                  _buildSocialIcon(Icons.code),
-                  _buildSocialIcon(Icons.share),
-                ],
-              ),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF6366F1),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 30,
-                    vertical: 15,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                ),
-                child: const Text("Let's talk together!"),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSocialIcon(IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white24,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildAboutSection(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return AnimatedBuilder(
-      animation: _scrollController,
-      builder: (context, child) {
-        return Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: isMobile ? 20 : 80,
-            vertical: isMobile ? 40 : 80,
-          ),
-          child: isMobile
-              ? Column(
-                  children: [
-                    _buildAboutText(),
-                    const SizedBox(height: 40),
-                    _buildAboutImage(),
-                  ],
-                )
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: _buildAboutText()),
-                    const SizedBox(width: 60),
-                    Expanded(child: _buildAboutImage()),
-                  ],
-                ),
-        );
-      },
-    );
-  }
-
-  Widget _buildAboutText() {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 1200),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(-50 * (1 - value), 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'About Me',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Passionate about technology from a young age, I am a software engineering professional with over 4 years of experience in developing innovative web and mobile applications.',
-                  style: TextStyle(fontSize: 16, height: 1.6),
-                ),
-                const SizedBox(height: 15),
-                const Text(
-                  'My mission is to transform complex ideas into elegant and high-performing digital solutions. I firmly believe that technology should serve humanity and enhance our daily lives',
-                  style: TextStyle(fontSize: 16, height: 1.6),
-                ),
-                const SizedBox(height: 30),
-                Row(
-                  children: [
-                    // _buildStatCard('50+', 'Projets réalisés'),
-                    const SizedBox(width: 30),
-                    _buildStatCard('5', 'Years of experience'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildStatCard(String number, String label) {
-    return Column(
-      children: [
-        Text(
-          number,
-          style: const TextStyle(
-            fontSize: 36,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF6366F1),
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 14, color: Colors.grey),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAboutImage() {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 1500),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(50 * (1 - value), 0),
-            child: Container(
-              height: 500,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-                image: const DecorationImage(
-                  image: AssetImage('assets/images/kh-bio.jpeg'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSkillsSection(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20 : 80,
-        vertical: isMobile ? 40 : 80,
-      ),
-      color: Colors.grey[50],
-      child: Column(
-        children: [
-          const Text(
-            'My Skills',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Technologies and tools I master',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-          const SizedBox(height: 50),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount = isMobile ? 1 : 3;
-              return GridView.count(
-                crossAxisCount: crossAxisCount,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 20,
-                crossAxisSpacing: 20,
-                childAspectRatio: 1.5,
-                children: [
-                  _buildSkillCard(
-                    'Frontend',
-                    Icons.web,
-                    Colors.blue,
-                    [
-                      SkillItem('FLUTTER', 0.9),
-                      SkillItem('ANGULAR', 0.85),
-                      SkillItem('REACT JS', 0.88),
-                    ],
-                  ),
-                  _buildSkillCard(
-                    'Backend',
-                    Icons.storage,
-                    Colors.green,
-                    [
-                      SkillItem('JAVA', 0.98),
-                      SkillItem('Python', 0.95),
-                      SkillItem('Node JS', 0.80),
-                    ],
-                  ),
-                  _buildSkillCard(
-                    'Database & Cloud',
-                    Icons.cloud,
-                    Colors.purple,
-                    [
-                      SkillItem('MySQL', 0.90),
-                      SkillItem('MongoDB', 0.88),
-                      SkillItem('PostgreSQL', 0.85),
-                      SkillItem('AWS', 0.82),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSkillCard(
-      String title, IconData icon, Color color, List<SkillItem> skills) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 1000),
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(icon, color: color),
-                    ),
-                    const SizedBox(width: 15),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                ...skills.map((skill) => _buildSkillBar(skill, value)),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSkillBar(SkillItem skill, double animValue) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(skill.name, style: const TextStyle(fontSize: 14)),
-              Text('${(skill.level * 100).toInt()}%',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Container(
-            height: 6,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(3),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: skill.level * animValue,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                  ),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExperienceSection(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20 : 80,
-        vertical: isMobile ? 40 : 80,
-      ),
-      child: Column(
-        children: [
-          const Text(
-            'Professional Experience',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'My Professional Journey',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-          const SizedBox(height: 50),
-          _buildExperienceCard(
-            'August 2023 - August 2025',
-            'Developer Backend JAVA',
-            'SONATEL ORANGE',
-            """ Development and enhancement of Java backend applications and microservices within an SOA architecture.
-    Level 3 maintenance and technical support, incident resolution, and production debugging.
-    Design and exposure of APIs for Orange B2C/B2B applications (Orange Money, Maxit, Orange & Moi, Kaabu, etc.), as well as for internal applications (HR SelfCare) and external partner systems.
-    Collaboration with software architects to implement new interfaces.
-    Writing unit, integration, and regression tests while applying best practices in API development.
-    Experience with Agile/Scrum and SAFe methodologies, with strong involvement in continuous delivery.
-    Expertise in distributed architectures: Kafka (streaming), Elastic & ELK (data historization, monitoring, and log analysis).
-    Projects completed: \n
-    
-      Project: Docubase – Document Management and Indexing System
-
-      Period: 2023
-      Context / Business Objective:
-      Docubase is a centralized information system designed to unify and consolidate the various document databases within the Orange ecosystem. Each information system previously managed its own repository; 
-      the goal was to build a single, unified platform for document access and management (upload, download, search), improving data consistency and operational efficiency across internal services.
-      
-      Role / Responsibilities:
-      
-      Designed and developed RESTful APIs for document search, upload, and download operations.
-      
-      Implemented secure microservices architecture using Spring Boot and Spring Cloud.
-      
-      Integrated Keycloak for authentication and authorization management.
-      
-      Documented and tested APIs using Postman, and exposed them through Apigee.
-      
-      Participated in continuous integration and deployment (CI/CD) processes with Jenkins and OpenShift.
-      
-      Collaborated on issue tracking and sprint planning using Jira, and managed source code via Bitbucket.
-      
-      Technical Environment:
-      JHipster · Spring Boot · Spring Cloud · Microservices · Java 11 · Keycloak · Apigee · Postman · Jenkins · OpenShift · Jira · Bitbucket · CI/CD
-      
-      Results / Impact:
-      
-      Successfully centralized document databases previously spread across multiple systems.
-      
-      
-      Simplified integration with other systems through standardized and secure APIs.
-      
-      Improved document traceability and governance across departments.
-      
-      Methodology:
-      Agile (Scrum) – two-week sprints, code reviews, continuous integration and delivery on OpenShift.
-      
-      
-      💸 Project: Orange Money Package – Wallet Transfer and Billing System Redesign
-
-          Period: 2024 – 2025
-          Context / Business Objective:
-          The Orange Money Package project aimed to modernize the Mobile Money ecosystem by redesigning the wallet transfer and billing systems to improve performance, scalability, and transactional security.
-           A key component of the initiative was the introduction of transaction packages (“forfaits”), 
-          allowing customers to benefit from fee-free transfers up to a defined threshold.
-          For example, a customer purchasing a 75 XOF package could perform up to 10,000 XOF in transactions without any fees applied. 
-          If the transaction amount exceeded this limit (e.g., 15,000 XOF), the first 10,000 XOF would remain fee-free, while the remaining 5,000 XOF would incur standard transaction fees.
-          This mechanism aimed to enhance customer satisfaction and encourage higher usage of digital financial services.
-          
-          Role / Responsibilities:
-          
-          Designed and developed the microservice to handle P2P transfers, international remittances, transaction cancellations, and package-based fee management.
-          
-          Contributed to the complete redesign of the billing module, consolidating internal and external partner billing under a unified microservice.
-          
-          Implemented a secure and distributed microservices architecture using Spring Boot and Spring Cloud.
-          
-          Integrated Redis for caching and optimization of high-volume transactional data.
-          
-          Leveraged Elasticsearch for search, monitoring, and analytics of wallet transactions.
-          
-          Integrated Keycloak for authentication and authorization, and exposed APIs through Apigee.
-          
-          Created and maintained API documentation with Swagger, Redoc, and Postman.
-          
-          Followed Agile (Scrum) methodology using Jira for sprint tracking, Bitbucket for version control, and automated deployments via CI/CD pipelines.
-          
-          Technical Environment:
-          Java 21 · Spring Boot · Spring Cloud · JHipster · Redis · Elasticsearch · Keycloak · Apigee · Swagger · Redoc · Maven · Jira · Bitbucket · Postman · CI/CD
-          
-          Results / Impact:
-          
-          Successfully implemented a dynamic package-based pricing model for Orange Money users.
-          
-          Centralized and standardized partner billing and transaction logic within a single microservice.
-          
-          Strengthened security and transactional integrity through fine-grained access control.
-          
-          Provided a scalable foundation for future Orange Money digital financial services.
-          
-          Methodology:
-          Agile (Scrum) – biweekly sprints, code reviews, automated testing, and continuous delivery on Orange’s infrastructure
-          
-          
-          
-          🏦 Project: Orange Bank – Tik Tak (Mobile Credit Service)
-
-          Period: 2024 – 2025
-          Context / Business Objective:
-          The Orange Bank – Tik Tak project aimed to develop an instant mobile credit solution for Orange Money customers who are eligible based on their financial scoring profile.
-          The main objective was to enable users to apply for and receive mobile loans directly through their Orange Money wallet — quickly, securely, and seamlessly.
-          
-          The project focused on the design and exposure of RESTful APIs supporting the entire credit lifecycle, including:
-          
-          Loan request API (credit application submission)
-          
-          getAuthorization API to obtain partner bank authorization
-          
-          Customer consent API for loan approval confirmation
-          
-          Loan validation and disbursement API
-          
-          Role / Responsibilities:
-          
-          Designed and developed backend APIs covering the full credit request and validation workflow.
-          
-          Integrated authorization and customer consent flows within the Orange Money ecosystem.
-          
-          Collaborated with software architects and security teams to ensure compliance with banking and regulatory standards.
-          
-          Implemented unit, integration, and regression tests to ensure service reliability and resilience.
-          
-          Participated in CI/CD deployment and monitoring on OpenShift infrastructure.
-          
-          Technical Environment:
-          Java 21 · Spring Boot · Spring Cloud · JHipster · Keycloak · Apigee · Redis · Elasticsearch · Maven · Postman · Jira · Bitbucket · CI/CD
-          
-          Results / Impact:
-          
-          Delivered a fully integrated instant mobile loan service within Orange Money.
-          
-          Reduced loan processing time from several hours to just a few seconds.
-          
-          Enhanced customer experience through a fully automated workflow (scoring, authorization, consent, validation).
-          
-          Contributed to financial inclusion by providing credit access to unbanked and underbanked users.
-          
-          Methodology:
-          Agile (Scrum) – biweekly sprints, continuous integration, and close collaboration between developers, architects, and security experts.
-        
-   
-    
-    """,
-            [
-              'JAVA 11',
-              'JAVA 21',
-              'SpringBoot',
-              'Spring CLOUD',
-              'JHIPSTER',
-              'REST API',
-              'POSTMAN',
-              'KAFKA',
-              'ELASTICSEARCH',
-              'REDIS',
-              'OPENSHIFT',
-              'APIGEE',
-              'MAVEN',
-            ],
-            true,
-          ),
-          const SizedBox(height: 30),
-          _buildExperienceCard(
-            'August 2023 - August 2025',
-            'Developer Fullstack',
-            'COOPERATIVE SONATEL BAMBILOR',
-            "Design and development of an integrated web platform enabling complete management of human resources, land, and plots, as well as tracking of contributions and automated plot distribution.",
-            [
-              'PHP',
-              'Symfony 5',
-              'PYTHON',
-            ],
-            false,
-          ),
-          const SizedBox(height: 30),
-          _buildExperienceCard(
-            'September 2022 - July 2023',
-            'Developer Fullstack - Freelance',
-            'OMVG',
-            "Study and development of a geographic information system",
-            [
-              'PYTHON',
-              'DJANGO',
-              'REST API',
-              'POSTGRESQL',
-              'Leaflet',
-              'QGIS',
-            ],
-            false,
-          ),
-          const SizedBox(height: 30),
-          _buildExperienceCard(
-            'September 2023 - August 2023',
-            'Developer Fullstack',
-            'SNSOFTWARE',
-            "Study and development of  applications.",
-            [
-              'JAVA 11',
-              'SpringBoot',
-              'REST API',
-              'FLUTTER',
-              'ODOO15',
-              'MAVEN',
-            ],
-            false,
-          ),
-          const SizedBox(height: 30),
-          _buildExperienceCard(
-            'November 2021 - June 2022',
-            'Developer Fullstack',
-            'SONATEL-ORANGE',
-            "Study and development of a microservices architecture using JHIPSTER for the merger of the MYSMC and SELF-SERVICE applications.",
-            [
-              'JAVA 11',
-              'JHIPSTER',
-              'SpringBoot',
-              'Spring CLOUD',
-              'REST API',
-              'OPENSHIFT',
-              'APIGEE',
-              'MAVEN',
-            ],
-            false,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExperienceCard(String period, String title, String company,
-      String description, List<String> tags, bool isFirst) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: isFirst ? 1000 : 1200),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, 30 * (1 - value)),
-            child: Container(
-              padding: const EdgeInsets.all(25),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: Text(
-                      period,
-                      style: const TextStyle(
-                        color: Color(0xFF6366F1),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    company,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF6366F1),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  Text(
-                    description,
-                    style: TextStyle(fontSize: 15, color: Colors.grey[700]),
-                  ),
-                  const SizedBox(height: 15),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: tags
-                        .map((tag) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[100],
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              child: Text(
-                                tag,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ))
-                        .toList(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildEducationSection(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20 : 80,
-        vertical: isMobile ? 40 : 80,
-      ),
-      color: Colors.grey[50],
-      child: Column(
-        children: [
-          const Text(
-            'Formation',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Mon parcours académique',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-          const SizedBox(height: 50),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              if (isMobile) {
-                return Column(
-                  children: [
-                    _buildEducationCard(
-                      Icons.school,
-                      'Master’s Degree in Software Engineering',
-                      'Higher Institute of Computer Science of Dakar (ISI)',
-                      '2022 - 2024',
-                      'Specialization in software architecture, advanced web development, and distributed systems.',
-                    ),
-                    const SizedBox(height: 20),
-                    _buildEducationCard(
-                      Icons.business,
-                      'Licence Informatique',
-                      'AMDI Institute',
-                      '2019 - 2022',
-                      'Comprehensive training in programming, algorithms, and information systems.',
-                    ),
-                  ],
-                );
-              }
-              return Row(
-                children: [
-                  Expanded(
-                    child: _buildEducationCard(
-                      Icons.school,
-                      'Master’s Degree in Software Engineering',
-                      'Higher Institute of Computer Science of Dakar (ISI)',
-                      '2022 - 2024',
-                      'Specialization in software architecture, advanced web development, and distributed systems.',
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: _buildEducationCard(
-                      Icons.business,
-                      'Licence Informatique',
-                      'AMDI Institute',
-                      '2019 - 2022',
-                      'Comprehensive training in programming, algorithms, and information systems.',
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEducationCard(IconData icon, String degree, String school,
-      String period, String description) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 1000),
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: 0.8 + (0.2 * value),
-          child: Opacity(
-            opacity: value,
-            child: Container(
-              padding: const EdgeInsets.all(25),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(icon, size: 40, color: const Color(0xFF6366F1)),
-                  const SizedBox(height: 15),
-                  Text(
-                    degree,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    school,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF6366F1),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    period,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 15),
-                  Text(
-                    description,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildProjectsSection(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20 : 80,
-        vertical: isMobile ? 40 : 80,
-      ),
-      child: Column(
-        children: [
-          const Text(
-            'Projects Completed',
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Some of My Achievements',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-          const SizedBox(height: 50),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount = isMobile ? 1 : 3;
-              return GridView.count(
-                crossAxisCount: crossAxisCount,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 20,
-                crossAxisSpacing: 20,
-                childAspectRatio: 0.85,
-                children: [
-                  _buildProjectCard(
-                    'E-Commerce Platform',
-                    'https://images.unsplash.com/photo-1557821552-17105176677c?w=400',
-                    'Modern online sales platform with shopping cart management, secure payments, and a responsive interface',
-                    ['React', 'Node.js', 'MongoDB'],
-                    0,
-                  ),
-                  _buildProjectCard(
-                    'Task Manager App',
-                    'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=400',
-                    'Task management application with real-time notifications and team collaboration features.',
-                    ['Vue.js', 'Firebase', 'Vuex'],
-                    1,
-                  ),
-                  _buildProjectCard(
-                    'Carpooling',
-                    'https://images.unsplash.com/photo-1636935529049-2078e9ee3e6c?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1335?w=400',
-                    'Task management application with real-time notifications and team collaboration features.',
-                    [
-                      'Anglar',
-                      'Springboot',
-                      'Spring Securite',
-                      'Spring cloud',
-                      'MySql',
-                      'leaflet'
-                    ],
-                    1,
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProjectCard(String title, String imageUrl, String description,
-      List<String> tags, int index) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 1000 + (index * 200)),
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 50 * (1 - value)),
-          child: Opacity(
-            opacity: value,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 180,
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(15),
-                        topRight: Radius.circular(15),
-                      ),
-                      image: DecorationImage(
-                        image: NetworkImage(imageUrl),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          description,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[700],
-                            height: 1.5,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 15),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: tags
-                              .map((tag) => Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF6366F1)
-                                          .withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      tag,
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Color(0xFF6366F1),
-                                      ),
-                                    ),
-                                  ))
-                              .toList(),
-                        ),
-                        const SizedBox(height: 15),
-                        TextButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(Icons.arrow_forward),
-                          label: const Text('View Project'),
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF6366F1),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildContactSection(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-        ),
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20 : 80,
-        vertical: isMobile ? 60 : 100,
-      ),
-      child: Column(
-        children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: 1.0),
-            duration: const Duration(milliseconds: 1000),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
+          _Header(onNavigate: _goTo),
+          Expanded(
+            child: SelectionArea(
+              child: SingleChildScrollView(
+                controller: _scroll,
                 child: Column(
                   children: [
-                    const Text(
-                      "Let's Work Together",
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
+                    _Hero(
+                      intro: _intro,
+                      onContact: () => _goTo(NavSection.contact),
                     ),
-                    const SizedBox(height: 15),
-                    const Text(
-                      'Ready to bring your project to life? Contact me!',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white70,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 40),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(Icons.email),
-                          label: const Text('Me contacter'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF6366F1),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 30,
-                              vertical: 18,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        OutlinedButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(Icons.download),
-                          label: const Text('Doawload CV'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Colors.white),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 30,
-                              vertical: 18,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    KeyedSubtree(
+                        key: _keys[NavSection.about],
+                        child: const _AboutSection()),
+                    KeyedSubtree(
+                        key: _keys[NavSection.skills],
+                        child: const _SkillsSection()),
+                    KeyedSubtree(
+                        key: _keys[NavSection.experience],
+                        child: const _ExperienceSection()),
+                    KeyedSubtree(
+                        key: _keys[NavSection.education],
+                        child: const _EducationSection()),
+                    KeyedSubtree(
+                        key: _keys[NavSection.projects],
+                        child: const _ProjectsSection()),
+                    KeyedSubtree(
+                        key: _keys[NavSection.contact],
+                        child: const _ContactSection()),
+                    _Footer(onNavigate: _goTo),
                   ],
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildFooter(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 768;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 20 : 80,
-        vertical: 40,
-      ),
-      color: const Color(0xFF1F2937),
-      child: Column(
-        children: [
-          if (!isMobile)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Bamba API',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF6366F1),
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      Text(
-                        "Let's create exceptional digital experiences together.",
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 60),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Navigation',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      _buildFooterLink('Bio'),
-                      _buildFooterLink('Compétences'),
-                      _buildFooterLink('Expérience'),
-                      _buildFooterLink('Projects'),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Contact',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      Text(
-                        'seckhadime2@gmail.com',
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        '+221 77 123 76 80',
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      Row(
-                        children: [
-                          _buildFooterSocialIcon(Icons.work_outline),
-                          _buildFooterSocialIcon(Icons.code),
-                          _buildFooterSocialIcon(Icons.share),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          if (isMobile)
-            Column(
-              children: [
-                const Text(
-                  'Bamba API',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF6366F1),
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildFooterSocialIcon(Icons.work_outline),
-                    _buildFooterSocialIcon(Icons.code),
-                    _buildFooterSocialIcon(Icons.share),
-                  ],
-                ),
-              ],
-            ),
-          const SizedBox(height: 30),
-          Divider(color: Colors.grey[700]),
-          const SizedBox(height: 20),
-          Text(
-            '© 2025 Khadim SECK. All rights reserved',
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFooterLink(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: InkWell(
-        onTap: () {},
-        child: Text(
-          text,
-          style: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFooterSocialIcon(IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: InkWell(
-        onTap: () {},
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: Colors.white, size: 20),
+      floatingActionButton: AnimatedScale(
+        scale: _showToTop ? 1 : 0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: FloatingActionButton(
+          onPressed: _showToTop ? _toTop : null,
+          tooltip: 'Back to top',
+          backgroundColor: p.primary,
+          foregroundColor: p.background,
+          child: const Icon(Icons.keyboard_arrow_up, size: 30),
         ),
       ),
     );
   }
 }
 
-class SkillItem {
-  final String name;
-  final double level;
+// ─── Header ────────────────────────────────────────────────────────────────
 
-  SkillItem(this.name, this.level);
+class _Header extends StatelessWidget {
+  const _Header({required this.onNavigate});
+  final ValueChanged<NavSection> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final mobile = isMobileWidth(context);
+    return Material(
+      color: p.background,
+      elevation: 0,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: p.border)),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: mobile ? 12 : 48,
+          vertical: mobile ? 6 : 12,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
+            child: Row(
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: mobile ? 8 : 0),
+                  child: Text(
+                    fullName,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.3,
+                      color: p.primary,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                const _ThemeToggle(),
+                SizedBox(width: mobile ? 0 : 8),
+                if (!mobile) ...[
+                  for (final s in NavSection.values
+                      .where((s) => s != NavSection.contact))
+                    TextButton(
+                      onPressed: () => onNavigate(s),
+                      style: TextButton.styleFrom(
+                        foregroundColor: p.body,
+                        minimumSize: const Size(48, 44),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                      ),
+                      child: Text(s.label, style: const TextStyle(fontSize: 14)),
+                    ),
+                  const SizedBox(width: 12),
+                  FilledButton(
+                    onPressed: () => onNavigate(NavSection.contact),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: p.primary,
+                      foregroundColor: p.background,
+                      minimumSize: const Size(48, 44),
+                      padding: const EdgeInsets.symmetric(horizontal: 22),
+                    ),
+                    child: const Text('Contact'),
+                  ),
+                ] else
+                  IconButton(
+                    tooltip: 'Open menu',
+                    icon: Icon(Icons.menu, color: p.ink),
+                    iconSize: 28,
+                    onPressed: () => _showMenu(context),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMenu(BuildContext context) {
+    final p = context.palette;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: p.surface,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final s in NavSection.values)
+              ListTile(
+                minTileHeight: 52,
+                leading: Icon(s.icon, color: p.primary),
+                title: Text(
+                  s.label,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: p.ink,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  Future.delayed(
+                    const Duration(milliseconds: 250),
+                    () => onNavigate(s),
+                  );
+                },
+              ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeToggle extends StatelessWidget {
+  const _ThemeToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final label = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+    return Semantics(
+      toggled: isDark,
+      label: 'Dark mode',
+      child: IconButton(
+        tooltip: label,
+        onPressed: () => toggleThemeMode(context),
+        iconSize: 24,
+        style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
+        icon: AnimatedSwitcher(
+          duration: reduceMotion(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 300),
+          transitionBuilder: (child, anim) => RotationTransition(
+            turns: Tween(begin: 0.75, end: 1.0).animate(anim),
+            child: FadeTransition(opacity: anim, child: child),
+          ),
+          child: Icon(
+            isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+            key: ValueKey(isDark),
+            color: p.ink,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Hero ──────────────────────────────────────────────────────────────────
+
+class _Hero extends StatelessWidget {
+  const _Hero({required this.intro, required this.onContact});
+  final AnimationController intro;
+  final VoidCallback onContact;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final mobile = isMobileWidth(context);
+    final photo = CurvedAnimation(
+      parent: intro,
+      curve: const Interval(0, 0.7, curve: Curves.easeOutExpo),
+    );
+    final text = CurvedAnimation(
+      parent: intro,
+      curve: const Interval(0.15, 1, curve: Curves.easeOutExpo),
+    );
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(gradient: p.heroGradient),
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: mobile ? 64 : 104,
+      ),
+      child: Column(
+        children: [
+          ScaleTransition(
+            scale: Tween(begin: 0.85, end: 1.0).animate(photo),
+            child: FadeTransition(
+              opacity: photo,
+              child: Container(
+                width: mobile ? 120 : 144,
+                height: mobile ? 120 : 144,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: p.onHero,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x33000000),
+                      blurRadius: 24,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/khadim.jpg',
+                    fit: BoxFit.cover,
+                    alignment: const Alignment(0, -0.55),
+                    semanticLabel: 'Portrait of $fullName',
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
+          FadeTransition(
+            opacity: text,
+            child: SlideTransition(
+              position: Tween(begin: const Offset(0, 0.15), end: Offset.zero)
+                  .animate(text),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Column(
+                  children: [
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        fullName,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: mobile ? 42 : 60,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -1.2,
+                          height: 1.05,
+                          color: p.onHero,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      headline,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: mobile ? 16 : 19,
+                        height: 1.5,
+                        color: p.onHeroMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _SocialRow(color: p.onHero, background: const Color(0x26FFFFFF)),
+                    const SizedBox(height: 28),
+                    FilledButton(
+                      onPressed: onContact,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: p.onHero,
+                        foregroundColor: Palette.light.primaryInk,
+                        minimumSize: const Size(48, 48),
+                        padding: const EdgeInsets.symmetric(horizontal: 30),
+                        textStyle: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      child: const Text("Let's talk together"),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SocialRow extends StatelessWidget {
+  const _SocialRow({required this.color, required this.background});
+  final Color color;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget button(IconData icon, String tooltip, String url) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: IconButton(
+            tooltip: tooltip,
+            onPressed: () => openLink(url),
+            icon: Icon(icon, color: color),
+            style: IconButton.styleFrom(
+              backgroundColor: background,
+              minimumSize: const Size(48, 48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        button(Icons.code, 'GitHub', githubUrl),
+        button(Icons.mail_outline, 'Email $email', 'mailto:$email'),
+        button(Icons.phone_outlined, 'Call $phoneDisplay', phoneUri),
+      ],
+    );
+  }
+}
+
+// ─── About ─────────────────────────────────────────────────────────────────
+
+class _AboutSection extends StatelessWidget {
+  const _AboutSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final mobile = isMobileWidth(context);
+
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            'About me',
+            style: TextStyle(
+              fontSize: mobile ? 30 : 38,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
+              color: p.ink,
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        for (final para in aboutParagraphs) ...[
+          Text(
+            para,
+            style: TextStyle(fontSize: 17, height: 1.7, color: p.body),
+          ),
+          const SizedBox(height: 16),
+        ],
+        const SizedBox(height: 8),
+        _Fact(value: '$yearsOfExperience+', label: 'years of experience'),
+      ],
+    );
+
+    final image = ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: AspectRatio(
+        aspectRatio: 4 / 5,
+        child: Image.asset(
+          'assets/images/kh-bio.jpeg',
+          fit: BoxFit.cover,
+          semanticLabel: '$fullName working at his desk',
+        ),
+      ),
+    );
+
+    return Container(
+      color: p.background,
+      padding: EdgeInsets.symmetric(
+        horizontal: mobile ? 20 : 48,
+        vertical: mobile ? 56 : 96,
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
+          child: Reveal(
+            child: mobile
+                ? Column(children: [text, const SizedBox(height: 32), image])
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(flex: 6, child: text),
+                      const SizedBox(width: 64),
+                      Expanded(flex: 5, child: image),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Fact extends StatelessWidget {
+  const _Fact({required this.value, required this.label});
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      textBaseline: TextBaseline.alphabetic,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w700,
+            color: p.primary,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(label, style: TextStyle(fontSize: 15, color: p.muted)),
+      ],
+    );
+  }
+}
+
+// ─── Skills ────────────────────────────────────────────────────────────────
+
+class _SkillsSection extends StatelessWidget {
+  const _SkillsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final width = MediaQuery.sizeOf(context).width;
+    final columns = width < 768 ? 1 : 2;
+    return Section(
+      alt: true,
+      title: 'Skills',
+      subtitle: 'Technologies and tools I work with',
+      child: EqualHeightGrid(
+        columns: columns,
+        children: [
+          for (final (i, g) in skillGroups.indexed)
+            Reveal(
+              delay: Duration(milliseconds: (i % columns) * 80),
+              child: Panel(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: p.primaryTint,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: ExcludeSemantics(
+                            child: Icon(g.icon, color: p.primaryInk),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            g.title,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: p.ink,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final s in g.skills) TagChip(s, size: 13),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Experience ────────────────────────────────────────────────────────────
+
+class _ExperienceSection extends StatelessWidget {
+  const _ExperienceSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Section(
+      title: 'Professional experience',
+      subtitle: 'My professional journey',
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 880),
+        child: Column(
+          children: [
+            for (final (i, e) in experiences.indexed) ...[
+              if (i > 0) const SizedBox(height: 24),
+              Reveal(child: _ExperienceCard(e)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExperienceCard extends StatelessWidget {
+  const _ExperienceCard(this.e);
+  final Experience e;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final mobile = isMobileWidth(context);
+    return Panel(
+      padding: EdgeInsets.all(mobile ? 20 : 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            e.period,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: p.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Semantics(
+            header: true,
+            child: Text(
+              e.role,
+              style: TextStyle(
+                fontSize: mobile ? 20 : 22,
+                fontWeight: FontWeight.w700,
+                height: 1.25,
+                color: p.ink,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            e.company,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+              color: p.muted,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  e.summary,
+                  style: TextStyle(fontSize: 15, height: 1.65, color: p.body),
+                ),
+                if (e.bullets.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  BulletList(e.bullets),
+                ],
+              ],
+            ),
+          ),
+          if (e.highlights.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _Highlights(e.highlights),
+          ],
+          const SizedBox(height: 18),
+          TagWrap(e.tags),
+        ],
+      ),
+    );
+  }
+}
+
+class _Highlights extends StatelessWidget {
+  const _Highlights(this.items);
+  final List<Highlight> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: Material(
+        color: p.backgroundAlt,
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          iconColor: p.primary,
+          collapsedIconColor: p.primary,
+          title: Text(
+            'Key projects (${items.length})',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: p.primaryInk,
+            ),
+          ),
+          children: [
+            for (final (i, h) in items.indexed) ...[
+              if (i > 0) Divider(color: p.border, height: 32),
+              _HighlightBody(h),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HighlightBody extends StatelessWidget {
+  const _HighlightBody(this.h);
+  final Highlight h;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    TextStyle label() => TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
+          color: p.ink,
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          h.title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            height: 1.35,
+            color: p.ink,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(h.period, style: TextStyle(fontSize: 13, color: p.muted)),
+        const SizedBox(height: 10),
+        Text(h.context,
+            style: TextStyle(fontSize: 14.5, height: 1.65, color: p.body)),
+        const SizedBox(height: 14),
+        Text('Role', style: label()),
+        const SizedBox(height: 8),
+        BulletList(h.responsibilities, fontSize: 14.5),
+        const SizedBox(height: 6),
+        Text('Results', style: label()),
+        const SizedBox(height: 8),
+        BulletList(h.results, fontSize: 14.5),
+        const SizedBox(height: 6),
+        Text('Stack', style: label()),
+        const SizedBox(height: 6),
+        Text(h.stack,
+            style: TextStyle(fontSize: 14, height: 1.6, color: p.muted)),
+      ],
+    );
+  }
+}
+
+// ─── Education ─────────────────────────────────────────────────────────────
+
+class _EducationSection extends StatelessWidget {
+  const _EducationSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final mobile = isMobileWidth(context);
+    return Section(
+      alt: true,
+      title: 'Education',
+      subtitle: 'My academic background',
+      child: EqualHeightGrid(
+        columns: mobile ? 1 : 2,
+        children: [
+          for (final ed in education)
+            Reveal(
+              child: Panel(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ExcludeSemantics(
+                      child: Icon(ed.icon, size: 36, color: p.primary),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      ed.degree,
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
+                        color: p.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      ed.school,
+                      style: TextStyle(fontSize: 15, color: p.primaryInk),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(ed.period,
+                        style: TextStyle(fontSize: 14, color: p.muted)),
+                    const SizedBox(height: 14),
+                    Text(
+                      ed.text,
+                      style:
+                          TextStyle(fontSize: 15, height: 1.6, color: p.body),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Projects ──────────────────────────────────────────────────────────────
+
+class _ProjectsSection extends StatelessWidget {
+  const _ProjectsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final columns = width < 768 ? 1 : (width < 1100 ? 2 : 3);
+    return Section(
+      title: 'Projects',
+      subtitle: 'Systems I designed and built',
+      child: EqualHeightGrid(
+        columns: columns,
+        children: [
+          for (final (i, pr) in projects.indexed)
+            Reveal(
+              delay: Duration(milliseconds: (i % columns) * 80),
+              child: _ProjectCard(pr),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProjectCard extends StatelessWidget {
+  const _ProjectCard(this.project);
+  final Project project;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 96,
+            width: double.infinity,
+            decoration: BoxDecoration(gradient: p.heroGradient),
+            child: ExcludeSemantics(
+              child: Icon(project.icon, size: 44, color: p.onHero),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text(
+                    project.title,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                      color: p.ink,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  project.context,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: p.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  project.description,
+                  style: TextStyle(fontSize: 14.5, height: 1.6, color: p.body),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),
+            child: TagWrap(project.tags),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Contact ───────────────────────────────────────────────────────────────
+
+class _ContactSection extends StatelessWidget {
+  const _ContactSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final mobile = isMobileWidth(context);
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(gradient: p.heroGradient),
+      padding: EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: mobile ? 64 : 96,
+      ),
+      child: Reveal(
+        child: Column(
+          children: [
+            Semantics(
+              header: true,
+              child: Text(
+                "Let's work together",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: mobile ? 32 : 42,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.8,
+                  color: p.onHero,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Have a backend, an API or a platform to build? Write to me.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 17, height: 1.5, color: p.onHeroMuted),
+            ),
+            const SizedBox(height: 32),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 16,
+              runSpacing: 12,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => openLink('mailto:$email'),
+                  icon: const Icon(Icons.mail_outline),
+                  label: const Text(email),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: p.onHero,
+                    foregroundColor: Palette.light.primaryInk,
+                    minimumSize: const Size(48, 50),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => openLink(phoneUri),
+                  icon: const Icon(Icons.phone_outlined),
+                  label: const Text(phoneDisplay),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: p.onHero,
+                    side: BorderSide(color: p.onHero),
+                    minimumSize: const Size(48, 50),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Footer ────────────────────────────────────────────────────────────────
+
+class _Footer extends StatelessWidget {
+  const _Footer({required this.onNavigate});
+  final ValueChanged<NavSection> onNavigate;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final mobile = isMobileWidth(context);
+
+    Widget heading(String t) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            t,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: p.footerInk,
+            ),
+          ),
+        );
+
+    Widget link(String text, VoidCallback onTap) => TextButton(
+          onPressed: onTap,
+          style: TextButton.styleFrom(
+            foregroundColor: p.footerMuted,
+            minimumSize: const Size(0, 44),
+            padding: EdgeInsets.zero,
+            alignment: Alignment.centerLeft,
+            tapTargetSize: MaterialTapTargetSize.padded,
+          ),
+          child: Text(text, style: const TextStyle(fontSize: 14)),
+        );
+
+    final brand = Column(
+      crossAxisAlignment:
+          mobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: [
+        Text(
+          fullName,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: p.footerBrand,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          "Let's create exceptional digital experiences together.",
+          textAlign: mobile ? TextAlign.center : TextAlign.start,
+          style: TextStyle(fontSize: 14, height: 1.5, color: p.footerMuted),
+        ),
+        const SizedBox(height: 16),
+        _SocialRow(color: p.footerInk, background: const Color(0x1AFFFFFF)),
+      ],
+    );
+
+    final nav = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        heading('Navigation'),
+        for (final s in NavSection.values
+            .where((s) => s != NavSection.contact))
+          link(s.label, () => onNavigate(s)),
+      ],
+    );
+
+    final contact = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        heading('Contact'),
+        link(email, () => openLink('mailto:$email')),
+        link(phoneDisplay, () => openLink(phoneUri)),
+        link('GitHub', () => openLink(githubUrl)),
+      ],
+    );
+
+    return Container(
+      width: double.infinity,
+      color: p.footer,
+      padding: EdgeInsets.symmetric(
+        horizontal: mobile ? 20 : 48,
+        vertical: 48,
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: kMaxContentWidth),
+          child: Column(
+            children: [
+              if (mobile)
+                Column(children: [
+                  brand,
+                  const SizedBox(height: 24),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: nav),
+                      Expanded(child: contact),
+                    ],
+                  ),
+                ])
+              else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 2, child: brand),
+                    const SizedBox(width: 48),
+                    Expanded(child: nav),
+                    Expanded(child: contact),
+                  ],
+                ),
+              const SizedBox(height: 32),
+              Divider(color: p.footerMuted.withValues(alpha: 0.25)),
+              const SizedBox(height: 20),
+              Text(
+                '© ${DateTime.now().year} $fullName. All rights reserved.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: p.footerMuted),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
