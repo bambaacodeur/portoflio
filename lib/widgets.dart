@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/link.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import 'theme.dart';
@@ -12,8 +12,23 @@ bool isMobileWidth(BuildContext context) =>
 bool reduceMotion(BuildContext context) =>
     MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
-Future<void> openLink(String url) async {
-  await launchUrl(Uri.parse(url), webOnlyWindowName: '_blank');
+/// Renders [builder]'s control as a real link: on the web it is an `<a>`,
+/// so it can be middle-clicked, copied, and is announced as a link.
+/// Web pages open in a new tab; mailto/tel stay in place.
+class ExternalLink extends StatelessWidget {
+  const ExternalLink({super.key, required this.url, required this.builder});
+
+  final String url;
+  final Widget Function(BuildContext context, VoidCallback? open) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Link(
+      uri: Uri.parse(url),
+      target: url.startsWith('http') ? LinkTarget.blank : LinkTarget.self,
+      builder: (context, follow) => builder(context, follow),
+    );
+  }
 }
 
 /// Fades and lifts its child the first time it scrolls into view.
@@ -95,6 +110,7 @@ class Section extends StatelessWidget {
             children: [
               Semantics(
                 header: true,
+                headingLevel: 2,
                 child: Text(
                   title,
                   textAlign: TextAlign.center,

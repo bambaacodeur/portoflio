@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Design tokens for the portfolio. Every color in the UI comes from here,
@@ -26,6 +25,10 @@ class Palette extends ThemeExtension<Palette> {
     required this.footerMuted,
     required this.footerBrand,
     required this.shadow,
+    required this.footerFill,
+    required this.onHeroAction,
+    required this.onHeroFill,
+    required this.heroShadow,
   });
 
   final Color background;
@@ -47,6 +50,10 @@ class Palette extends ThemeExtension<Palette> {
   final Color footerMuted;
   final Color footerBrand;
   final Color shadow;
+  final Color footerFill;
+  final Color onHeroAction;
+  final Color onHeroFill;
+  final Color heroShadow;
 
   LinearGradient get heroGradient => LinearGradient(
         begin: Alignment.topLeft,
@@ -74,6 +81,10 @@ class Palette extends ThemeExtension<Palette> {
     footerMuted: Color(0xFFC4C4DA),
     footerBrand: Color(0xFFB4B0FF),
     shadow: Color(0x1414142B),
+    heroShadow: Color(0x33000000),
+    onHeroFill: Color(0x26FFFFFF),
+    onHeroAction: Color(0xFF3F37C9),
+    footerFill: Color(0x1AFFFFFF),
   );
 
   static const dark = Palette(
@@ -96,6 +107,10 @@ class Palette extends ThemeExtension<Palette> {
     footerMuted: Color(0xFFB9B9D2),
     footerBrand: Color(0xFFB4B0FF),
     shadow: Color(0x66000000),
+    heroShadow: Color(0x59000000),
+    onHeroFill: Color(0x26FFFFFF),
+    onHeroAction: Color(0xFF3F37C9),
+    footerFill: Color(0x1AFFFFFF),
   );
 
   @override
@@ -125,6 +140,10 @@ class Palette extends ThemeExtension<Palette> {
       footerMuted: l(footerMuted, other.footerMuted),
       footerBrand: l(footerBrand, other.footerBrand),
       shadow: l(shadow, other.shadow),
+      footerFill: l(footerFill, other.footerFill),
+      onHeroAction: l(onHeroAction, other.onHeroAction),
+      onHeroFill: l(onHeroFill, other.onHeroFill),
+      heroShadow: l(heroShadow, other.heroShadow),
     );
   }
 }
@@ -145,9 +164,12 @@ ThemeData buildTheme(Brightness brightness) {
       surface: p.surface,
     ),
     scaffoldBackgroundColor: p.background,
+    // Web on desktop defaults to compact density, which shrinks buttons
+    // below 44px. Keep full-size touch targets everywhere.
+    visualDensity: VisualDensity.standard,
   );
   final text = base.textTheme.apply(
-    fontFamily: GoogleFonts.poppins().fontFamily,
+    fontFamily: 'Poppins',
     bodyColor: p.body,
     displayColor: p.ink,
   );

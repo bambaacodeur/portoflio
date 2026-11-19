@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:portoflio/content.dart';
 import 'package:flutter/material.dart';
 import 'package:portoflio/main.dart';
@@ -8,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 void main() {
-  setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
   setUp(() =>
       VisibilityDetectorController.instance.updateInterval = Duration.zero);
 

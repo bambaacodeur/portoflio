@@ -238,15 +238,6 @@ const List<Experience> experiences = [
     tags: ['Python', 'Django', 'REST API', 'PostgreSQL', 'Leaflet', 'QGIS'],
   ),
   Experience(
-    // TODO(khadim): confirm these dates — the previous version said
-    // "September 2023 - August 2023", which ends before it starts.
-    period: 'September 2023 – August 2023',
-    role: 'Fullstack Developer',
-    company: 'SNSOFTWARE',
-    summary: 'Study and development of applications.',
-    tags: ['Java 11', 'Spring Boot', 'REST API', 'Flutter', 'Odoo 15', 'Maven'],
-  ),
-  Experience(
     period: 'November 2021 – June 2022',
     role: 'Fullstack Developer',
     company: 'SONATEL ORANGE',

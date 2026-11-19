@@ -104,9 +104,8 @@ class _PortfolioPageState extends State<PortfolioPage>
     super.dispose();
   }
 
-  Duration get _scrollDuration => reduceMotion(context)
-      ? Duration.zero
-      : const Duration(milliseconds: 700);
+  Duration get _scrollDuration =>
+      reduceMotion(context) ? Duration.zero : const Duration(milliseconds: 700);
 
   void _goTo(NavSection section) {
     final ctx = _keys[section]!.currentContext;
@@ -237,7 +236,8 @@ class _Header extends StatelessWidget {
                         minimumSize: const Size(48, 44),
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                       ),
-                      child: Text(s.label, style: const TextStyle(fontSize: 14)),
+                      child:
+                          Text(s.label, style: const TextStyle(fontSize: 14)),
                     ),
                   const SizedBox(width: 12),
                   FilledButton(
@@ -378,17 +378,17 @@ class _Hero extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: p.onHero,
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0x33000000),
+                      color: p.heroShadow,
                       blurRadius: 24,
-                      offset: Offset(0, 10),
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
                 child: ClipOval(
                   child: Image.asset(
-                    'assets/images/khadim.jpg',
+                    'assets/images/khadim.webp',
                     fit: BoxFit.cover,
                     alignment: const Alignment(0, -0.55),
                     semanticLabel: 'Portrait of $fullName',
@@ -409,6 +409,7 @@ class _Hero extends StatelessWidget {
                   children: [
                     Semantics(
                       header: true,
+                      headingLevel: 1,
                       child: Text(
                         fullName,
                         textAlign: TextAlign.center,
@@ -432,13 +433,13 @@ class _Hero extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    _SocialRow(color: p.onHero, background: const Color(0x26FFFFFF)),
+                    _SocialRow(color: p.onHero, background: p.onHeroFill),
                     const SizedBox(height: 28),
                     FilledButton(
                       onPressed: onContact,
                       style: FilledButton.styleFrom(
                         backgroundColor: p.onHero,
-                        foregroundColor: Palette.light.primaryInk,
+                        foregroundColor: p.onHeroAction,
                         minimumSize: const Size(48, 48),
                         padding: const EdgeInsets.symmetric(horizontal: 30),
                         textStyle: const TextStyle(
@@ -468,15 +469,18 @@ class _SocialRow extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget button(IconData icon, String tooltip, String url) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6),
-          child: IconButton(
-            tooltip: tooltip,
-            onPressed: () => openLink(url),
-            icon: Icon(icon, color: color),
-            style: IconButton.styleFrom(
-              backgroundColor: background,
-              minimumSize: const Size(48, 48),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          child: ExternalLink(
+            url: url,
+            builder: (context, open) => IconButton(
+              tooltip: tooltip,
+              onPressed: open,
+              icon: Icon(icon, color: color),
+              style: IconButton.styleFrom(
+                backgroundColor: background,
+                minimumSize: const Size(48, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),
@@ -508,6 +512,7 @@ class _AboutSection extends StatelessWidget {
       children: [
         Semantics(
           header: true,
+          headingLevel: 2,
           child: Text(
             'About me',
             style: TextStyle(
@@ -536,7 +541,7 @@ class _AboutSection extends StatelessWidget {
       child: AspectRatio(
         aspectRatio: 4 / 5,
         child: Image.asset(
-          'assets/images/kh-bio.jpeg',
+          'assets/images/kh-bio.webp',
           fit: BoxFit.cover,
           semanticLabel: '$fullName working at his desk',
         ),
@@ -716,6 +721,7 @@ class _ExperienceCard extends StatelessWidget {
           const SizedBox(height: 8),
           Semantics(
             header: true,
+            headingLevel: 3,
             child: Text(
               e.role,
               style: TextStyle(
@@ -878,13 +884,17 @@ class _EducationSection extends StatelessWidget {
                       child: Icon(ed.icon, size: 36, color: p.primary),
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      ed.degree,
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w700,
-                        height: 1.3,
-                        color: p.ink,
+                    Semantics(
+                      header: true,
+                      headingLevel: 3,
+                      child: Text(
+                        ed.degree,
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          height: 1.3,
+                          color: p.ink,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -963,6 +973,7 @@ class _ProjectCard extends StatelessWidget {
               children: [
                 Semantics(
                   header: true,
+                  headingLevel: 3,
                   child: Text(
                     project.title,
                     style: TextStyle(
@@ -1022,6 +1033,7 @@ class _ContactSection extends StatelessWidget {
           children: [
             Semantics(
               header: true,
+              headingLevel: 2,
               child: Text(
                 "Let's work together",
                 textAlign: TextAlign.center,
@@ -1045,26 +1057,32 @@ class _ContactSection extends StatelessWidget {
               spacing: 16,
               runSpacing: 12,
               children: [
-                FilledButton.icon(
-                  onPressed: () => openLink('mailto:$email'),
-                  icon: const Icon(Icons.mail_outline),
-                  label: const Text(email),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: p.onHero,
-                    foregroundColor: Palette.light.primaryInk,
-                    minimumSize: const Size(48, 50),
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                ExternalLink(
+                  url: 'mailto:$email',
+                  builder: (context, open) => FilledButton.icon(
+                    onPressed: open,
+                    icon: const Icon(Icons.mail_outline),
+                    label: const Text(email),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: p.onHero,
+                      foregroundColor: p.onHeroAction,
+                      minimumSize: const Size(48, 50),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                    ),
                   ),
                 ),
-                OutlinedButton.icon(
-                  onPressed: () => openLink(phoneUri),
-                  icon: const Icon(Icons.phone_outlined),
-                  label: const Text(phoneDisplay),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: p.onHero,
-                    side: BorderSide(color: p.onHero),
-                    minimumSize: const Size(48, 50),
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                ExternalLink(
+                  url: phoneUri,
+                  builder: (context, open) => OutlinedButton.icon(
+                    onPressed: open,
+                    icon: const Icon(Icons.phone_outlined),
+                    label: const Text(phoneDisplay),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: p.onHero,
+                      side: BorderSide(color: p.onHero),
+                      minimumSize: const Size(48, 50),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                    ),
                   ),
                 ),
               ],
@@ -1099,7 +1117,7 @@ class _Footer extends StatelessWidget {
           ),
         );
 
-    Widget link(String text, VoidCallback onTap) => TextButton(
+    Widget link(String text, VoidCallback? onTap) => TextButton(
           onPressed: onTap,
           style: TextButton.styleFrom(
             foregroundColor: p.footerMuted,
@@ -1109,6 +1127,11 @@ class _Footer extends StatelessWidget {
             tapTargetSize: MaterialTapTargetSize.padded,
           ),
           child: Text(text, style: const TextStyle(fontSize: 14)),
+        );
+
+    Widget urlLink(String text, String url) => ExternalLink(
+          url: url,
+          builder: (context, open) => link(text, open),
         );
 
     final brand = Column(
@@ -1130,7 +1153,7 @@ class _Footer extends StatelessWidget {
           style: TextStyle(fontSize: 14, height: 1.5, color: p.footerMuted),
         ),
         const SizedBox(height: 16),
-        _SocialRow(color: p.footerInk, background: const Color(0x1AFFFFFF)),
+        _SocialRow(color: p.footerInk, background: p.footerFill),
       ],
     );
 
@@ -1138,8 +1161,7 @@ class _Footer extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         heading('Navigation'),
-        for (final s in NavSection.values
-            .where((s) => s != NavSection.contact))
+        for (final s in NavSection.values.where((s) => s != NavSection.contact))
           link(s.label, () => onNavigate(s)),
       ],
     );
@@ -1148,9 +1170,9 @@ class _Footer extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         heading('Contact'),
-        link(email, () => openLink('mailto:$email')),
-        link(phoneDisplay, () => openLink(phoneUri)),
-        link('GitHub', () => openLink(githubUrl)),
+        urlLink(email, 'mailto:$email'),
+        urlLink(phoneDisplay, phoneUri),
+        urlLink('GitHub', githubUrl),
       ],
     );
 
