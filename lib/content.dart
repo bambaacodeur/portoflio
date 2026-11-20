@@ -343,7 +343,7 @@ const List<Project> projects = [
     context: 'SaaS · 2026',
     icon: Icons.local_gas_station,
     description:
-        'Multi-company SaaS for managing service stations and their daily closing (bouclage), with one sub-domain and branding per company, role-based menus and JWT security. First customer: Touba Oil.',
+        'Multi-company SaaS for managing service stations and their daily closing (bouclage), with one sub-domain and branding per company, role-based menus and JWT security.',
     tags: ['Java 25', 'Spring Boot 4', 'Angular', 'PostgreSQL', 'Dokploy'],
   ),
   Project(
